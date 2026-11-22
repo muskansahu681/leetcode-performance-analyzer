@@ -17,36 +17,71 @@ with st.sidebar:
     st.write("LeetCode AI Performance Analyzer")
     st.write("Analyze coding skills and contest performance.")
 
+
 # Styling
 st.markdown("""
 <style>
 
 .stApp {
-background: linear-gradient(135deg,#0f172a,#1e293b,#020617);
-color:white;
+    background: linear-gradient(135deg, #0f172a, #1e293b, #020617);
+    color: #ffffff;
 }
 
-h1{
-text-align:center;
-color:#38bdf8;
-font-size:50px;
+/* Main heading */
+h1 {
+    text-align: center;
+    color: #38bdf8 !important;
+    font-size: 50px;
 }
 
-.stButton>button{
-background: linear-gradient(90deg,#3b82f6,#06b6d4);
-color:white;
-border-radius:10px;
-height:3em;
-width:200px;
-font-size:18px;
+/* Section headings */
+h2, h3 {
+    color: #ffffff !important;
+}
+
+/* Metric labels: Total, Easy, Medium, Hard */
+[data-testid="stMetricLabel"],
+[data-testid="stMetricLabel"] p,
+[data-testid="stMetricLabel"] div {
+    color: #CBD5E1 !important;
+    opacity: 1 !important;
+}
+
+/* Metric values: 159, 107, 49, 3 */
+[data-testid="stMetricValue"],
+[data-testid="stMetricValue"] div {
+    color: #FFFFFF !important;
+    opacity: 1 !important;
+}
+
+/* Metric delta text */
+[data-testid="stMetricDelta"] {
+    color: #CBD5E1 !important;
+}
+
+/* Buttons */
+.stButton>button {
+    background: linear-gradient(90deg, #3b82f6, #06b6d4);
+    color: white !important;
+    border-radius: 10px;
+    height: 3em;
+    width: 200px;
+    font-size: 18px;
+}
+
+/* Input labels */
+.stTextInput label {
+    color: #FFFFFF !important;
+}
+
+/* General text */
+.stMarkdown p,
+.stMarkdown li {
+    color: #E2E8F0;
 }
 
 </style>
 """, unsafe_allow_html=True)
-
-st.markdown("<h1>🚀 AI LeetCode Performance Analyzer</h1>", unsafe_allow_html=True)
-
-username = st.text_input("Enter your LeetCode Username")
 
 # Session state fix
 if "analyzed" not in st.session_state:
