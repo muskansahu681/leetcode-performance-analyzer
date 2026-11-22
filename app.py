@@ -3,13 +3,77 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from analyzer import get_leetcode_data, analyze_performance
-from recommender import recommend_problems, generate_practice_plan, detect_weak_topics
+from recommender import (
+    recommend_problems,
+    generate_practice_plan,
+    detect_weak_topics
+)
 
 st.set_page_config(
     page_title="LeetCode AI Analyzer",
     page_icon="🚀",
     layout="wide"
 )
+
+
+# Custom CSS for the dashboard
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(135deg, #0f172a, #1e293b, #020617);
+    color: #ffffff;
+}
+
+h1 {
+    text-align: center;
+    color: #38bdf8 !important;
+    font-size: 42px !important;
+}
+
+h2, h3 {
+    color: #ffffff !important;
+}
+
+[data-testid="stMetricLabel"],
+[data-testid="stMetricLabel"] p {
+    color: #cbd5e1 !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stMetricValue"],
+[data-testid="stMetricValue"] div {
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+.stButton > button {
+    background: linear-gradient(90deg, #3b82f6, #06b6d4);
+    color: white !important;
+    border: none;
+    border-radius: 10px;
+    height: 3em;
+    width: 200px;
+    font-size: 16px;
+}
+
+.stTextInput label {
+    color: #ffffff !important;
+}
+
+.stTextInput input {
+    color: #ffffff !important;
+}
+
+[data-testid="stSidebar"] {
+    background-color: #242631;
+}
+
+[data-testid="stSidebar"] * {
+    color: #ffffff;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # Sidebar
 with st.sidebar:
@@ -18,276 +82,247 @@ with st.sidebar:
     st.write("Analyze coding skills and contest performance.")
 
 
-# Styling
-st.markdown("""
-<style>
+# Main page
+st.markdown(
+    "<h1>🚀 AI LeetCode Performance Analyzer</h1>",
+    unsafe_allow_html=True
+)
 
-.stApp {
-    background: linear-gradient(135deg, #0f172a, #1e293b, #020617);
-    color: #ffffff;
-}
+username = st.text_input("Enter your LeetCode Username")
 
-/* Main heading */
-h1 {
-    text-align: center;
-    color: #38bdf8 !important;
-    font-size: 50px;
-}
 
-/* Section headings */
-h2, h3 {
-    color: #ffffff !important;
-}
+# Store analysis results between Streamlit reruns
+if "stats" not in st.session_state:
+    st.session_state.stats = None
 
-/* Metric labels: Total, Easy, Medium, Hard */
-[data-testid="stMetricLabel"],
-[data-testid="stMetricLabel"] p,
-[data-testid="stMetricLabel"] div {
-    color: #CBD5E1 !important;
-    opacity: 1 !important;
-}
+if "analyzed_username" not in st.session_state:
+    st.session_state.analyzed_username = ""
 
-/* Metric values: 159, 107, 49, 3 */
-[data-testid="stMetricValue"],
-[data-testid="stMetricValue"] div {
-    color: #FFFFFF !important;
-    opacity: 1 !important;
-}
 
-/* Metric delta text */
-[data-testid="stMetricDelta"] {
-    color: #CBD5E1 !important;
-}
-
-/* Buttons */
-.stButton>button {
-    background: linear-gradient(90deg, #3b82f6, #06b6d4);
-    color: white !important;
-    border-radius: 10px;
-    height: 3em;
-    width: 200px;
-    font-size: 18px;
-}
-
-/* Input labels */
-.stTextInput label {
-    color: #FFFFFF !important;
-}
-
-/* General text */
-.stMarkdown p,
-.stMarkdown li {
-    color: #E2E8F0;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# Session state fix
-if "analyzed" not in st.session_state:
-    st.session_state.analyzed = False
-
+# Fetch and process the profile when the button is clicked
 if st.button("Analyze Profile"):
-    st.session_state.analyzed = True
+    if not username.strip():
+        st.session_state.stats = None
+        st.warning("Please enter your LeetCode username.")
 
-if st.session_state.analyzed:
+    else:
+        with st.spinner("Analyzing profile..."):
+            data = get_leetcode_data(username.strip())
 
-    with st.spinner("Analyzing profile..."):
+            if data is None:
+                st.session_state.stats = None
+                st.error("User not found or profile is private.")
 
-        data = get_leetcode_data(username)
+            else:
+                stats = analyze_performance(data)
 
-        if data is None:
-            st.error("User not found or profile private")
-            st.stop()
+                if stats is None:
+                    st.session_state.stats = None
+                    st.error("Unable to analyze profile data.")
 
-        stats = analyze_performance(data)
+                else:
+                    st.session_state.stats = stats
+                    st.session_state.analyzed_username = username.strip()
 
-        if stats is None:
-            st.error("Unable to analyze profile data")
-            st.stop()
 
-        total = stats["total"]
-        easy = stats["easy"]
-        medium = stats["medium"]
-        hard = stats["hard"]
+# Display the dashboard after a successful analysis
+if st.session_state.stats is not None:
 
-        rating = stats["rating"]
-        ranking = stats["ranking"]
-        contests = stats["contests"]
+    stats = st.session_state.stats
 
-        score = easy*1 + medium*3 + hard*5
+    total = stats["total"]
+    easy = stats["easy"]
+    medium = stats["medium"]
+    hard = stats["hard"]
 
-        if score < 100:
-            level = "Beginner 🟢"
-        elif score < 300:
-            level = "Intermediate 🟡"
-        else:
-            level = "Advanced 🔴"
+    rating = stats["rating"]
+    ranking = stats["ranking"]
+    contests = stats["contests"]
 
-        st.success("Profile analyzed successfully!")
+    # Calculate the skill score
+    score = easy + (medium * 3) + (hard * 5)
 
-        st.markdown("---")
+    if score < 100:
+        level = "Beginner 🟢"
+    elif score < 300:
+        level = "Intermediate 🟡"
+    else:
+        level = "Advanced 🔴"
 
-        # Coding Statistics
-        st.subheader("📊 Coding Statistics")
+    st.success(
+        f"Profile analyzed successfully! Username: "
+        f"{st.session_state.analyzed_username}"
+    )
 
-        col1,col2,col3,col4 = st.columns(4)
+    st.markdown("---")
 
-        col1.metric("Total",total)
-        col2.metric("Easy",easy)
-        col3.metric("Medium",medium)
-        col4.metric("Hard",hard)
+    # Coding statistics
+    st.subheader("📊 Coding Statistics")
 
-        # Contest Performance
-        st.subheader("🏆 Contest Performance")
+    col1, col2, col3, col4 = st.columns(4)
 
-        col5,col6,col7 = st.columns(3)
+    col1.metric("Total", total)
+    col2.metric("Easy", easy)
+    col3.metric("Medium", medium)
+    col4.metric("Hard", hard)
 
-        col5.metric("Contest Rating", int(rating))
-        col6.metric("Global Ranking", ranking)
-        col7.metric("Contests Attended", contests)
+    # Contest performance
+    st.subheader("🏆 Contest Performance")
 
-        # Skill Score
-        st.subheader("🏆 Skill Score")
+    col5, col6, col7 = st.columns(3)
 
-        col8,col9 = st.columns(2)
+    col5.metric("Contest Rating", int(rating))
+    col6.metric("Global Ranking", ranking)
+    col7.metric("Contests Attended", contests)
 
-        col8.metric("Score",score)
-        col9.metric("Level",level)
+    # Skill score
+    st.subheader("🏆 Skill Score")
 
-        # Skill Progress
-        st.subheader("📈 Skill Progress")
+    col8, col9 = st.columns(2)
 
-        progress = min(score/300,1.0)
-        st.progress(progress)
+    col8.metric("Score", score)
+    col9.metric("Level", level)
 
-        # Weekly Coding Target
-        st.subheader("🎯 Weekly Coding Target")
+    # Progress towards the next skill level
+    st.subheader("📈 Skill Progress")
 
-        if score < 100:
-            st.info("Solve 20 Easy problems this week")
+    progress = min(score / 300, 1.0)
+    st.progress(progress)
 
-        elif score < 300:
-            st.info("Solve 15 Medium + 5 Easy problems")
+    # Weekly practice target
+    st.subheader("🎯 Weekly Coding Target")
 
-        else:
-            st.success("Solve 10 Hard + 10 Medium problems")
+    if score < 100:
+        st.info("Solve 20 Easy problems this week.")
+    elif score < 300:
+        st.info("Solve 15 Medium + 5 Easy problems.")
+    else:
+        st.success("Solve 10 Hard + 10 Medium problems.")
 
-        # Coding Consistency
-        st.subheader("🔥 Coding Consistency")
+    # Coding consistency
+    st.subheader("🔥 Coding Consistency")
 
-        if total < 50:
-            st.write("Begin building daily coding habit (3 problems/day).")
+    if total < 50:
+        st.write("Begin building a daily coding habit (3 problems/day).")
+    elif total < 200:
+        st.write("Good consistency! Try solving 4–5 problems/day.")
+    else:
+        st.success("Excellent consistency. Maintain 5+ problems/day.")
 
-        elif total < 200:
-            st.write("Good consistency! Try solving 4–5 problems/day.")
+    # Performance feedback
+    st.subheader("🤖 AI Feedback")
 
-        else:
-            st.success("Excellent consistency. Maintain 5+ problems/day.")
+    if easy < 30:
+        st.info("Focus on solving more Easy problems to build fundamentals.")
+    elif medium < 50:
+        st.info("You have good basics. Start solving more Medium problems.")
+    elif hard < 20:
+        st.info("Try solving Hard problems to improve your skills.")
+    else:
+        st.success("Excellent performance!")
 
-        # AI Feedback
-        st.subheader("🤖 AI Feedback")
+    # Problem difficulty distribution
+    st.subheader("📊 Difficulty Breakdown")
 
-        if easy < 30:
-            st.info("Focus on solving more Easy problems to build fundamentals.")
+    labels = ["Easy", "Medium", "Hard"]
+    values = [easy, medium, hard]
 
-        elif medium < 50:
-            st.info("You have good basics. Start solving more Medium problems.")
+    fig, ax = plt.subplots()
+    ax.pie(values, labels=labels, autopct="%1.1f%%")
+    ax.axis("equal")
 
-        elif hard < 20:
-            st.info("Try solving Hard problems to become advanced.")
+    st.pyplot(fig)
+    plt.close(fig)
 
-        else:
-            st.success("Excellent performance!")
+    # Visualize the user's problem-solving distribution
+    st.subheader("🧠 Skill Radar")
 
-        # Difficulty Chart
-        st.subheader("📊 Difficulty Breakdown")
+    radar_labels = [
+        "Easy",
+        "Medium",
+        "Hard",
+        "Problem Solving",
+        "Consistency"
+    ]
 
-        labels = ["Easy","Medium","Hard"]
-        values = [easy,medium,hard]
-
-        fig,ax = plt.subplots()
-        ax.pie(values,labels=labels,autopct="%1.1f%%")
-        ax.axis("equal")
-
-        st.pyplot(fig)
-
-        # Radar Chart
-        st.subheader("🧠 Skill Radar")
-
-        labels = ['Easy','Medium','Hard','Problem Solving','Consistency']
-
-        values = [
+    radar_values = [
         easy,
         medium,
         hard,
-        (easy+medium+hard)/3,
-        (min(easy,50)+min(medium,50))/2
-        ]
+        (easy + medium + hard) / 3,
+        (min(easy, 50) + min(medium, 50)) / 2
+    ]
 
-        angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False)
+    angles = np.linspace(
+        0, 2 * np.pi, len(radar_labels), endpoint=False
+    )
 
-        values = np.concatenate((values,[values[0]]))
-        angles = np.concatenate((angles,[angles[0]]))
+    radar_values = np.concatenate((radar_values, [radar_values[0]]))
+    angles = np.concatenate((angles, [angles[0]]))
 
-        fig = plt.figure()
-        ax = fig.add_subplot(111, polar=True)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, polar=True)
 
-        ax.plot(angles, values)
-        ax.fill(angles, values, alpha=0.25)
+    ax.plot(angles, radar_values)
+    ax.fill(angles, radar_values, alpha=0.25)
+    ax.set_thetagrids(angles[:-1] * 180 / np.pi, radar_labels)
 
-        ax.set_thetagrids(angles[:-1]*180/np.pi, labels)
+    st.pyplot(fig)
+    plt.close(fig)
 
-        st.pyplot(fig)
+    # Suggested problems based on profile statistics
+    st.subheader("🧠 Recommended Problems")
 
-        # Recommended Problems
-        st.subheader("🧠 Recommended Problems")
+    problems = recommend_problems(stats)
 
-        problems = recommend_problems(stats)
+    for problem in problems:
+        st.markdown(
+            f"✅ [{problem['title']}]({problem['link']})"
+        )
 
-        for p in problems:
-            st.markdown(f"✅ [{p['title']}]({p['link']})")
+    # Five-day practice schedule
+    st.subheader("📅 5-Day Practice Plan")
 
-        # Practice Plan
-        st.subheader("📅 5-Day Practice Plan")
+    plan = generate_practice_plan()
 
-        plan = generate_practice_plan()
+    for day, tasks in plan.items():
+        st.write(f"**{day}**")
 
-        for day,tasks in plan.items():
+        for task in tasks:
+            st.markdown(
+                f"- [{task['title']}]({task['link']})"
+            )
 
-            st.write(day)
+    # Topics suggested for additional practice
+    st.subheader("⚠️ Weak Topics")
 
-            for t in tasks:
-                st.markdown(f"- [{t['title']}]({t['link']})")
+    weak_topics = detect_weak_topics()
 
-        # Weak Topics
-        st.subheader("⚠️ Weak Topics")
+    for topic in weak_topics:
+        st.warning(f"Practice more problems in **{topic}**")
 
-        weak_topics = detect_weak_topics()
+    # Topic-based difficulty suggestions
+    st.subheader("🧠 Topic Difficulty Predictor")
 
-        for topic in weak_topics:
-            st.warning(f"Practice more problems in **{topic}**")
+    topic = st.text_input(
+        "Enter a topic (Array, DP, Graph, Tree)",
+        key="topic_input"
+    )
 
-        # Topic Difficulty Predictor
-        st.subheader("🧠 Topic Difficulty Predictor")
+    if topic:
+        selected_topic = topic.strip().lower()
 
-        topic = st.text_input("Enter a topic (Array, DP, Graph, Tree)")
+        if selected_topic in ["array", "string"]:
+            st.success("Recommended Difficulty: Easy → Medium")
 
-        if topic:
+        elif selected_topic in ["dp", "dynamic programming", "graph"]:
+            st.warning("Recommended Difficulty: Medium → Hard")
 
-            if topic.lower() in ["array","string"]:
-                st.success("Recommended Difficulty: Easy → Medium")
+        elif selected_topic in ["tree", "binary tree"]:
+            st.info("Recommended Difficulty: Medium")
 
-            elif topic.lower() in ["dp","dynamic programming","graph"]:
-                st.warning("Recommended Difficulty: Medium → Hard")
+        else:
+            st.write("Practice mixed difficulty problems.")
 
-            elif topic.lower() in ["tree","binary tree"]:
-                st.info("Recommended Difficulty: Medium")
-
-            else:
-                st.write("Practice mixed difficulty problems.")
-
-        # Professional completion message
-        st.markdown("---")
-        st.success("✅ Profile Analysis Completed")
-        st.caption("LeetCode performance insights generated successfully.")
+    st.markdown("---")
+    st.success("✅ Profile Analysis Completed")
